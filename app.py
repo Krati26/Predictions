@@ -817,4 +817,27 @@ def show_model_performance(app):
         'Importance': [0.25, 0.18, 0.15, 0.12, 0.10, 0.08, 0.07, 0.05]
     }
     
-    importance_df = pd.DataFrame(feature)
+    importance_df = pd.DataFrame(feature_importance_data)
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.barplot(data=importance_df, x='Importance', y='Feature', ax=ax, palette='viridis')
+    ax.set_title('Feature Importance in Risk Classification')
+    st.pyplot(fig)
+    
+    # System status
+    st.subheader("🔄 System Status")
+    
+    status_col1, status_col2 = st.columns(2)
+    
+    with status_col1:
+        st.info(f"**Models Loaded:** {'✅ Yes' if app.models_loaded else '❌ No'}")
+        st.info(f"**Portfolios Available:** {len(app.portfolios)}")
+        st.info(f"**Risk Categories:** {list(app.le_risk.classes_)}")
+    
+    with status_col2:
+        st.info(f"**Risk Features:** {len(app.risk_feature_names)}")
+        st.info(f"**Return Features:** {len(app.return_feature_names)}")
+        st.info("**Live Data:** ✅ Available")
+
+if __name__ == "__main__":
+    main()
