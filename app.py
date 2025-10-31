@@ -1,4 +1,4 @@
-import streamlit as st
+)import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -817,4 +817,4 @@ def show_model_performance(app):
         'Importance': [0.25, 0.18, 0.15, 0.12, 0.10, 0.08, 0.07, 0.05]
     }
     
-    importance_df = pd.DataFrame(feature
+    importance_df = pd.DataFrame(feature)
