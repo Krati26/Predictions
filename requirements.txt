@@ -7,3 +7,5 @@ scikit-learn
 yfinance
 joblib
 plotly
+requests
+datetime
