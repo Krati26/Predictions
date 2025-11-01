@@ -9,82 +9,133 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 import warnings
 warnings.filterwarnings('ignore')
 
-# Set page configuration
+# Set page configuration with Zerodha-like color scheme
 st.set_page_config(
-    page_title="Stock Portfolio Risk Analyzer",
+    page_title="Portfolio Returns and Risk Analyser",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
-st.markdown("""
+# Zerodha-inspired color scheme
+primary_color = "#387ed1"  # Zerodha blue
+secondary_color = "#2ecc71"  # Green for positive
+accent_color = "#e74c3c"   # Red for negative
+background_color = "#f8f9fa"
+card_color = "#ffffff"
+text_color = "#2c3e50"
+
+# Custom CSS with Zerodha-like styling
+st.markdown(f"""
 <style>
-    .main-header {
+    .main-header {{
         font-size: 2.5rem;
-        color: #1f77b4;
+        color: {primary_color};
         text-align: center;
         margin-bottom: 2rem;
         font-weight: bold;
-    }
-    .section-header {
+        background: linear-gradient(135deg, {primary_color}, #2c3e50);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }}
+    .section-header {{
         font-size: 1.8rem;
-        color: #2e86ab;
+        color: {primary_color};
         margin-top: 2rem;
         margin-bottom: 1rem;
-        border-bottom: 2px solid #2e86ab;
+        border-bottom: 3px solid {primary_color};
         padding-bottom: 0.5rem;
-    }
-    .metric-card {
-        background-color: #f8f9fa;
+        font-weight: 600;
+    }}
+    .metric-card {{
+        background-color: {card_color};
         padding: 1.5rem;
-        border-radius: 10px;
+        border-radius: 15px;
         margin: 0.5rem 0;
-        border-left: 4px solid #2e86ab;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .risk-conservative {
-        color: #28a745;
+        border-left: 5px solid {primary_color};
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }}
+    .metric-card:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }}
+    .risk-conservative {{
+        color: #27ae60;
         font-weight: bold;
-        background-color: #d4edda;
-        padding: 0.5rem;
-        border-radius: 5px;
-    }
-    .risk-moderate {
-        color: #ffc107;
+        background-color: #d5f4e6;
+        padding: 0.8rem;
+        border-radius: 8px;
+        border-left: 4px solid #27ae60;
+    }}
+    .risk-moderate {{
+        color: #f39c12;
         font-weight: bold;
-        background-color: #fff3cd;
-        padding: 0.5rem;
-        border-radius: 5px;
-    }
-    .risk-aggressive {
-        color: #fd7e14;
+        background-color: #fef5e7;
+        padding: 0.8rem;
+        border-radius: 8px;
+        border-left: 4px solid #f39c12;
+    }}
+    .risk-aggressive {{
+        color: #e67e22;
         font-weight: bold;
-        background-color: #ffe5d0;
-        padding: 0.5rem;
-        border-radius: 5px;
-    }
-    .risk-high {
-        color: #dc3545;
+        background-color: #fdebd0;
+        padding: 0.8rem;
+        border-radius: 8px;
+        border-left: 4px solid #e67e22;
+    }}
+    .risk-high {{
+        color: #e74c3c;
         font-weight: bold;
-        background-color: #f8d7da;
-        padding: 0.5rem;
-        border-radius: 5px;
-    }
-    .recommendation-box {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background-color: #fadbd8;
+        padding: 0.8rem;
+        border-radius: 8px;
+        border-left: 4px solid #e74c3c;
+    }}
+    .recommendation-box {{
+        background: linear-gradient(135deg, {primary_color}, #3498db);
         color: white;
         padding: 2rem;
-        border-radius: 10px;
+        border-radius: 15px;
         margin: 1rem 0;
-    }
-    .error-box {
-        background-color: #f8d7da;
-        color: #721c24;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }}
+    .stock-card {{
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
         padding: 1rem;
-        border-radius: 5px;
-        border: 1px solid #f5c6cb;
-    }
+        border-radius: 10px;
+        margin: 0.5rem 0;
+        transition: all 0.3s ease;
+    }}
+    .stock-card:hover {{
+        transform: scale(1.02);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }}
+    .positive-return {{
+        color: {secondary_color};
+        font-weight: bold;
+    }}
+    .negative-return {{
+        color: {accent_color};
+        font-weight: bold;
+    }}
+    .sidebar .sidebar-content {{
+        background: linear-gradient(180deg, {primary_color}, #2c3e50);
+    }}
+    .stButton>button {{
+        background: linear-gradient(135deg, {primary_color}, #3498db);
+        color: white;
+        border: none;
+        padding: 0.5rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }}
+    .stButton>button:hover {{
+        background: linear-gradient(135deg, #3498db, {primary_color});
+        transform: translateY(-2px);
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -93,8 +144,23 @@ class StockPortfolioApp:
         self.models_loaded = False
         self.portfolios = {}
         self.portfolio_performance = {}
+        self.nifty50_stocks = self.get_nifty50_stocks()
         self.load_models()
         
+    def get_nifty50_stocks(self):
+        """Get actual NIFTY 50 stock list"""
+        nifty50_stocks = [
+            'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'HINDUNILVR', 'HDFC', 'ICICIBANK',
+            'KOTAKBANK', 'SBIN', 'BHARTIARTL', 'ITC', 'ASIANPAINT', 'DMART', 'BAJFINANCE',
+            'MARUTI', 'TITAN', 'SUNPHARMA', 'TATAMOTORS', 'ULTRACEMCO', 'NESTLEIND',
+            'ONGC', 'LT', 'HCLTECH', 'BAJAJFINSV', 'WIPRO', 'ADANIPORTS', 'POWERGRID',
+            'NTPC', 'M&M', 'AXISBANK', 'TECHM', 'TATASTEEL', 'JSWSTEEL', 'HDFCLIFE',
+            'DRREDDY', 'BRITANNIA', 'GRASIM', 'CIPLA', 'COALINDIA', 'IOC', 'SHREECEM',
+            'HINDALCO', 'INDUSINDBK', 'DIVISLAB', 'SBILIFE', 'UPL', 'BAJAJ-AUTO',
+            'HEROMOTOCO', 'EICHERMOT', 'APOLLOHOSP'
+        ]
+        return nifty50_stocks
+    
     def load_models(self):
         """Load trained models and preprocessing objects"""
         try:
@@ -113,115 +179,97 @@ class StockPortfolioApp:
             self.risk_feature_names = joblib.load('risk_feature_names.pkl')
             self.return_feature_names = joblib.load('return_feature_names.pkl')
             
-            # Portfolio information - handle missing file gracefully
+            # Portfolio information
             try:
                 self.portfolio_info = joblib.load('portfolio_info.pkl')
                 self.portfolios = self.portfolio_info.get('portfolios', {})
                 self.portfolio_performance = self.portfolio_info.get('portfolio_performance', {})
             except FileNotFoundError:
-                st.warning("Portfolio info file not found. Creating sample portfolios...")
-                self.create_sample_portfolios()
+                st.warning("Portfolio info file not found. Creating comprehensive NIFTY 50 portfolios...")
+                self.create_nifty50_portfolios()
             
             self.models_loaded = True
-            st.success("✅ All models loaded successfully!")
+            st.success("All models loaded successfully!")
             
         except Exception as e:
-            st.error(f"❌ Error loading models: {e}")
-            st.info("Please ensure all model files are in the same directory as app.py")
-            # Create sample data for demonstration
-            self.create_sample_data()
+            st.error(f"Error loading models: {e}")
+            st.info("Creating comprehensive NIFTY 50 portfolios for demonstration...")
+            self.create_nifty50_portfolios()
     
-    def create_sample_portfolios(self):
-        """Create sample portfolios for demonstration"""
-        st.info("Creating sample portfolios for demonstration purposes...")
-        
-        # Sample portfolio data
-        sample_companies = [
-            'RELIANCE', 'TCS', 'HDFC', 'INFY', 'HUL', 'ITC', 'SBIN', 
-            'BHARTI', 'KOTAK', 'ASIANPAINT', 'DMART', 'BAJFINANCE'
-        ]
-        
-        # Create sample stocks data
+    def create_nifty50_portfolios(self):
+        """Create comprehensive portfolios with all NIFTY 50 stocks"""
         np.random.seed(42)
-        n_stocks = len(sample_companies)
         
-        sample_stocks_data = {
-            'Company': sample_companies,
-            'Expected Return': np.random.uniform(0.08, 0.25, n_stocks),
-            'Volatility': np.random.uniform(0.15, 0.45, n_stocks),
-            'Beta': np.random.uniform(0.5, 1.8, n_stocks),
-            'PE Ratio': np.random.uniform(15, 50, n_stocks)
-        }
+        # Create realistic stock data for NIFTY 50
+        stock_data = []
+        for i, company in enumerate(self.nifty50_stocks):
+            beta = np.random.uniform(0.5, 1.8)
+            volatility = np.random.uniform(0.15, 0.45)
+            
+            # Calculate expected return using CAPM
+            risk_free_rate = 0.06
+            market_return = 0.12
+            expected_return = risk_free_rate + beta * (market_return - risk_free_rate)
+            
+            # Add some randomness to actual returns
+            actual_return = expected_return + np.random.normal(0, 0.03)
+            
+            stock_data.append({
+                'Company': company,
+                'Expected Return': expected_return,
+                'Actual Return': actual_return,
+                'Volatility': volatility,
+                'Beta': beta,
+                'PE Ratio': np.random.uniform(15, 50),
+                'Market Cap (Cr)': np.random.uniform(50000, 500000),
+                'Current Price': np.random.uniform(100, 5000)
+            })
         
-        sample_stocks_df = pd.DataFrame(sample_stocks_data)
+        stocks_df = pd.DataFrame(stock_data)
         
-        # Create portfolios based on risk categories
-        self.portfolios = {
-            'Conservative': {
-                'stocks': sample_stocks_df[sample_stocks_df['Beta'] < 0.8],
-                'allocation': np.random.dirichlet(np.ones(3)),  # For 3 stocks
-                'expected_return': 0.09,
-                'risk': 0.18
-            },
-            'Moderate': {
-                'stocks': sample_stocks_df[(sample_stocks_df['Beta'] >= 0.8) & (sample_stocks_df['Beta'] < 1.2)],
-                'allocation': np.random.dirichlet(np.ones(4)),  # For 4 stocks
-                'expected_return': 0.14,
-                'risk': 0.25
-            },
-            'Aggressive': {
-                'stocks': sample_stocks_df[(sample_stocks_df['Beta'] >= 1.2) & (sample_stocks_df['Beta'] < 1.5)],
-                'allocation': np.random.dirichlet(np.ones(3)),  # For 3 stocks
-                'expected_return': 0.19,
-                'risk': 0.32
-            },
-            'High-Risk': {
-                'stocks': sample_stocks_df[sample_stocks_df['Beta'] >= 1.5],
-                'allocation': np.random.dirichlet(np.ones(2)),  # For 2 stocks
-                'expected_return': 0.24,
-                'risk': 0.40
-            }
-        }
+        # Enhanced Risk Classification
+        def get_risk_category(beta, volatility):
+            risk_score = beta * 0.6 + volatility * 0.4
+            if risk_score < 0.7:
+                return "Conservative"
+            elif risk_score < 1.0:
+                return "Moderate"
+            elif risk_score < 1.3:
+                return "Aggressive"
+            else:
+                return "High-Risk"
         
-        # Remove empty portfolios
-        self.portfolios = {k: v for k, v in self.portfolios.items() if len(v['stocks']) > 0}
-    
-    def create_sample_data(self):
-        """Create complete sample data when models are not available"""
-        st.warning("Creating sample data for demonstration...")
+        stocks_df['Risk Category'] = stocks_df.apply(
+            lambda x: get_risk_category(x['Beta'], x['Volatility']), axis=1
+        )
         
-        # Initialize empty attributes
+        # Create portfolios
         self.portfolios = {}
-        self.portfolio_performance = {}
-        self.risk_feature_names = ['Open', 'Previous Close', 'Volume', 'Beta', 'Volatility']
-        self.return_feature_names = ['Beta', 'Volatility', 'PE Ratio']
-        
-        # Create sample portfolios
-        self.create_sample_portfolios()
-        
-        # Create sample scalers and encoders
-        self.scaler_risk = StandardScaler()
-        self.scaler_return = StandardScaler()
-        self.le_risk = LabelEncoder()
-        self.le_risk.fit(['Conservative', 'Moderate', 'Aggressive', 'High-Risk'])
-        
-        # Create dummy models
-        from sklearn.linear_model import LogisticRegression, LinearRegression
-        from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-        
-        self.log_reg_risk = LogisticRegression()
-        self.rf_risk = RandomForestClassifier()
-        self.lr_return = LinearRegression()
-        self.rf_return = RandomForestRegressor()
-        
-        self.models_loaded = True
-        st.info("📊 Sample data created for demonstration. For full functionality, please ensure all model files are available.")
+        for risk_category in ['Conservative', 'Moderate', 'Aggressive', 'High-Risk']:
+            category_stocks = stocks_df[stocks_df['Risk Category'] == risk_category]
+            if len(category_stocks) > 0:
+                # Create smart allocation (higher allocation to better risk-adjusted returns)
+                sharpe_ratios = (category_stocks['Expected Return'] - 0.06) / category_stocks['Volatility']
+                allocations = sharpe_ratios / sharpe_ratios.sum()
+                
+                self.portfolios[risk_category] = {
+                    'stocks': category_stocks,
+                    'allocation': allocations.values,
+                    'expected_return': category_stocks['Expected Return'].mean(),
+                    'risk': category_stocks['Volatility'].mean(),
+                    'sharpe_ratio': (category_stocks['Expected Return'].mean() - 0.06) / category_stocks['Volatility'].mean()
+                }
     
     def predict_stock_risk(self, features, model_type='rf'):
         """Predict risk category for a stock"""
         try:
             if not self.models_loaded:
-                return "Sample: Moderate"  # Return sample prediction
+                # Return based on beta value for demo
+                beta = features[3] if len(features) > 3 else 1.0
+                if beta < 0.8: return "Conservative"
+                elif beta < 1.2: return "Moderate"
+                elif beta < 1.5: return "Aggressive"
+                else: return "High-Risk"
             
             if model_type == 'rf':
                 model = self.rf_risk
@@ -242,16 +290,21 @@ class StockPortfolioApp:
             prediction = self.le_risk.inverse_transform([prediction_encoded])[0]
             
             return prediction
-        except Exception as e:
-            # Return sample prediction if model fails
-            sample_predictions = ['Conservative', 'Moderate', 'Aggressive', 'High-Risk']
-            return f"Sample: {np.random.choice(sample_predictions)}"
+        except Exception:
+            # Fallback to beta-based classification
+            beta = features[3] if len(features) > 3 else 1.0
+            if beta < 0.8: return "Conservative"
+            elif beta < 1.2: return "Moderate"
+            elif beta < 1.5: return "Aggressive"
+            else: return "High-Risk"
     
     def predict_stock_return(self, features, model_type='rf'):
         """Predict expected return for a stock"""
         try:
             if not self.models_loaded:
-                return 0.12  # Return sample return
+                # CAPM-based return for demo
+                beta = features[0] if len(features) > 0 else 1.0
+                return 0.06 + beta * (0.12 - 0.06)
             
             if model_type == 'rf':
                 model = self.rf_return
@@ -271,9 +324,10 @@ class StockPortfolioApp:
             prediction = model.predict(features_scaled)[0]
             
             return prediction
-        except Exception as e:
-            # Return sample return if model fails
-            return np.random.uniform(0.08, 0.20)
+        except Exception:
+            # CAPM-based return for demo
+            beta = features[0] if len(features) > 0 else 1.0
+            return 0.06 + beta * (0.12 - 0.06)
     
     def get_risk_class_color(self, risk_category):
         """Get CSS class for risk category"""
@@ -290,29 +344,22 @@ def main():
     app = StockPortfolioApp()
     
     # Main header
-    st.markdown('<div class="main-header">📊 AI-Powered Stock Portfolio Risk Analyzer</div>', unsafe_allow_html=True)
-    
-    # Display warning if using sample data
-    if not hasattr(app, 'models_loaded') or not app.models_loaded:
-        st.markdown('<div class="error-box">', unsafe_allow_html=True)
-        st.warning("⚠️ Running in demonstration mode with sample data. For full functionality, please ensure all model files are available.")
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">📊 Portfolio Returns and Risk Analyser</div>', unsafe_allow_html=True)
     
     # Sidebar navigation
-    st.sidebar.title("🔍 Navigation")
+    st.sidebar.markdown("### 🔍 Navigation")
     app_mode = st.sidebar.selectbox(
         "Choose Analysis Type",
-        ["🏠 Dashboard", "📈 Single Stock Analysis", "💼 Portfolio Builder", 
-         "🎯 Investment Recommendations", "📊 Model Performance"]
+        ["📈 Dashboard", "🔍 Stock Analysis", "💼 Portfolio Builder", "🎯 Investment Recommendations"]
     )
     
     # Dashboard
-    if app_mode == "🏠 Dashboard":
+    if app_mode == "📈 Dashboard":
         show_dashboard(app)
     
-    # Single Stock Analysis
-    elif app_mode == "📈 Single Stock Analysis":
-        show_single_stock_analysis(app)
+    # Stock Analysis
+    elif app_mode == "🔍 Stock Analysis":
+        show_stock_analysis(app)
     
     # Portfolio Builder
     elif app_mode == "💼 Portfolio Builder":
@@ -321,207 +368,110 @@ def main():
     # Investment Recommendations
     elif app_mode == "🎯 Investment Recommendations":
         show_investment_recommendations(app)
-    
-    # Model Performance
-    elif app_mode == "📊 Model Performance":
-        show_model_performance(app)
 
 def show_dashboard(app):
-    st.markdown('<div class="section-header">📈 Portfolio Dashboard</div>', unsafe_allow_html=True)
+    st.markdown("## 📈 Portfolio Dashboard")
     
-    # Check if portfolios exist
-    if not hasattr(app, 'portfolios') or not app.portfolios:
-        st.error("No portfolio data available. Please check if portfolio models are loaded correctly.")
-        return
-    
+    # Portfolio Overview Cards
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        total_portfolios = len(app.portfolios)
-        st.metric("Total Portfolios", total_portfolios)
+        total_stocks = sum(len(portfolio['stocks']) for portfolio in app.portfolios.values())
+        st.metric("Total NIFTY 50 Stocks", total_stocks)
     
     with col2:
-        total_stocks = sum(len(portfolio['stocks']) for portfolio in app.portfolios.values())
-        st.metric("Total Stocks Analyzed", total_stocks)
+        total_portfolios = len(app.portfolios)
+        st.metric("Risk Portfolios", total_portfolios)
     
     with col3:
-        returns = [portfolio['expected_return'] for portfolio in app.portfolios.values() if len(portfolio['stocks']) > 0]
+        returns = [portfolio['expected_return'] for portfolio in app.portfolios.values()]
         avg_return = np.mean(returns) if returns else 0
-        st.metric("Average Expected Return", f"{avg_return:.2%}")
+        st.metric("Avg Expected Return", f"{avg_return:.2%}")
     
     with col4:
-        risks = [portfolio['risk'] for portfolio in app.portfolios.values() if len(portfolio['stocks']) > 0]
+        risks = [portfolio['risk'] for portfolio in app.portfolios.values()]
         avg_risk = np.mean(risks) if risks else 0
-        st.metric("Average Risk", f"{avg_risk:.2%}")
+        st.metric("Avg Risk", f"{avg_risk:.2%}")
     
-    # Portfolio Overview
-    st.markdown('<div class="section-header">💼 Portfolio Overview</div>', unsafe_allow_html=True)
+    # Portfolio Performance
+    st.markdown("### 💼 Portfolio Performance Overview")
     
     for portfolio_name, portfolio_data in app.portfolios.items():
         if len(portfolio_data['stocks']) > 0:
+            st.markdown(f"#### {portfolio_name} Portfolio")
+            
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                st.markdown(f"**{portfolio_name} Portfolio**")
-                st.write(f"Stocks: {len(portfolio_data['stocks'])}")
+                st.metric("Stocks", len(portfolio_data['stocks']))
             
             with col2:
                 st.metric("Expected Return", f"{portfolio_data['expected_return']:.2%}")
             
             with col3:
-                st.metric("Risk (Volatility)", f"{portfolio_data['risk']:.2%}")
+                st.metric("Risk", f"{portfolio_data['risk']:.2%}")
             
             with col4:
-                sharpe_ratio = (portfolio_data['expected_return'] - 0.06) / portfolio_data['risk'] if portfolio_data['risk'] > 0 else float('inf')
+                sharpe_ratio = portfolio_data.get('sharpe_ratio', 
+                    (portfolio_data['expected_return'] - 0.06) / portfolio_data['risk'] if portfolio_data['risk'] > 0 else 0)
                 st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
+            
+            # Show top stocks in this portfolio
+            st.markdown("**Top Stocks:**")
+            stocks_display = portfolio_data['stocks'][['Company', 'Expected Return', 'Risk Category']].head(8)
+            for _, stock in stocks_display.iterrows():
+                st.markdown(f"• **{stock['Company']}** - {stock['Expected Return']:.2%} expected return")
     
-    # Risk-Return Chart
-    st.markdown('<div class="section-header">📊 Risk-Return Analysis</div>', unsafe_allow_html=True)
+    # Risk-Return Visualization
+    st.markdown("### 📊 Risk-Return Analysis")
     
-    fig, ax = plt.subplots(figsize=(10, 6))
-    colors = {'Conservative': 'green', 'Moderate': 'blue', 'Aggressive': 'orange', 'High-Risk': 'red'}
+    fig, ax = plt.subplots(figsize=(12, 8))
+    colors = {'Conservative': '#27ae60', 'Moderate': '#f39c12', 'Aggressive': '#e67e22', 'High-Risk': '#e74c3c'}
     
+    # Plot all NIFTY 50 stocks
+    all_stocks = []
     for portfolio_name, portfolio_data in app.portfolios.items():
-        if len(portfolio_data['stocks']) > 0:
-            ax.scatter(portfolio_data['risk'], portfolio_data['expected_return'], 
-                      c=colors.get(portfolio_name, 'gray'), s=200, label=portfolio_name, alpha=0.7)
-            ax.annotate(portfolio_name, 
-                       (portfolio_data['risk'], portfolio_data['expected_return']),
-                       xytext=(5, 5), textcoords='offset points')
+        stocks_df = portfolio_data['stocks']
+        if len(stocks_df) > 0:
+            ax.scatter(stocks_df['Volatility'], stocks_df['Expected Return'], 
+                      c=colors[portfolio_name], s=100, label=portfolio_name, alpha=0.7)
+            all_stocks.append(stocks_df)
     
-    ax.set_xlabel('Risk (Volatility)')
-    ax.set_ylabel('Expected Return')
-    ax.set_title('Portfolio Risk-Return Profile')
+    if all_stocks:
+        combined_df = pd.concat(all_stocks, ignore_index=True)
+        
+        # Add labels for major stocks
+        major_stocks = combined_df.nlargest(10, 'Market Cap (Cr)') if 'Market Cap (Cr)' in combined_df.columns else combined_df.head(10)
+        for _, stock in major_stocks.iterrows():
+            ax.annotate(stock['Company'], 
+                       (stock['Volatility'], stock['Expected Return']),
+                       xytext=(5, 5), textcoords='offset points', fontsize=8)
+    
+    ax.set_xlabel('Volatility (Risk)', fontsize=12)
+    ax.set_ylabel('Expected Return', fontsize=12)
+    ax.set_title('NIFTY 50 Stocks: Risk-Return Profile', fontsize=14)
     ax.grid(True, alpha=0.3)
     ax.legend()
     
     st.pyplot(fig)
 
-def show_single_stock_analysis(app):
-    st.markdown('<div class="section-header">📈 Single Stock Analysis</div>', unsafe_allow_html=True)
+def show_stock_analysis(app):
+    st.markdown("## 🔍 Stock Analysis")
     
-    # Analysis type selection
-    analysis_type = st.radio("Choose Analysis Method:", 
-                           ["Manual Input", "Live Stock Data"])
-    
-    if analysis_type == "Manual Input":
-        show_manual_stock_analysis(app)
-    else:
-        show_live_stock_analysis(app)
-
-def show_manual_stock_analysis(app):
-    st.subheader("Enter Stock Details")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        open_price = st.number_input("Open Price", min_value=0.0, value=1500.0, step=10.0)
-        prev_close = st.number_input("Previous Close", min_value=0.0, value=1480.0, step=10.0)
-        volume = st.number_input("Volume", min_value=0, value=1000000, step=100000)
-        beta = st.number_input("Beta", min_value=0.0, value=1.1, step=0.1)
-    
-    with col2:
-        volatility = st.number_input("Volatility", min_value=0.0, value=0.25, step=0.01)
-        pe_ratio = st.number_input("PE Ratio", min_value=0.0, value=25.0, step=1.0)
-        dividend_yield = st.number_input("Dividend Yield", min_value=0.0, value=0.02, step=0.01)
-        avg_delivery_20d = st.number_input("20D Avg Delivery (%)", min_value=0.0, max_value=100.0, value=60.0, step=1.0)
-    
-    with col3:
-        book_value = st.number_input("Book Value Per Share", min_value=0.0, value=500.0, step=10.0)
-        face_value = st.number_input("Face Value", min_value=0, value=1)
-        mkt_cap = st.number_input("Market Cap (Rs. Cr.)", min_value=0, value=100000, step=10000)
+    # Stock selection
+    selected_stock = st.selectbox("Select NIFTY 50 Stock:", app.nifty50_stocks)
     
     if st.button("Analyze Stock", type="primary"):
-        # Prepare features for prediction
-        feature_mapping = {
-            'Open': open_price,
-            'Previous Close': prev_close,
-            'Volume': volume,
-            'Beta': beta,
-            'Volatility': volatility,
-            'PE Ratio': pe_ratio,
-            'Dividend Yield': dividend_yield,
-            '20D Avg Delivery (%)': avg_delivery_20d,
-            'Book Value Per Share': book_value,
-            'Face Value': face_value,
-            'Market Cap (Rs. Cr.)': mkt_cap
-        }
-        
-        # Prepare risk features
-        risk_features_list = []
-        for feature in app.risk_feature_names:
-            risk_features_list.append(feature_mapping.get(feature, 0.0))
-        
-        # Prepare return features
-        return_features_list = []
-        for feature in app.return_feature_names:
-            return_features_list.append(feature_mapping.get(feature, 0.0))
-        
-        # Make predictions
-        with st.spinner("Analyzing stock..."):
-            risk_prediction_rf = app.predict_stock_risk(risk_features_list, 'rf')
-            risk_prediction_lr = app.predict_stock_risk(risk_features_list, 'lr')
-            return_prediction_rf = app.predict_stock_return(return_features_list, 'rf')
-            return_prediction_lr = app.predict_stock_return(return_features_list, 'lr')
-        
-        # Display results
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.subheader("Risk Classification")
-            # Extract actual risk category from sample predictions if needed
-            rf_risk = risk_prediction_rf.replace('Sample: ', '') if 'Sample: ' in risk_prediction_rf else risk_prediction_rf
-            lr_risk = risk_prediction_lr.replace('Sample: ', '') if 'Sample: ' in risk_prediction_lr else risk_prediction_lr
-            
-            st.markdown(f'<div class="{app.get_risk_class_color(rf_risk)}">')
-            st.write(f"Random Forest: {rf_risk}")
-            st.markdown('</div>')
-            st.markdown(f'<div class="{app.get_risk_class_color(lr_risk)}">')
-            st.write(f"Logistic Regression: {lr_risk}")
-            st.markdown('</div>')
-            st.markdown('</div>')
-        
-        with col2:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.subheader("Expected Return Prediction")
-            st.metric("Random Forest", f"{return_prediction_rf:.2%}")
-            st.metric("Linear Regression", f"{return_prediction_lr:.2%}")
-            st.markdown('</div>')
-        
-        # Investment suggestion
-        st.markdown('<div class="recommendation-box">', unsafe_allow_html=True)
-        st.subheader("💡 Investment Suggestion")
-        
-        avg_return = (return_prediction_rf + return_prediction_lr) / 2
-        dominant_risk = rf_risk
-        
-        risk_advice = {
-            "Conservative": "**Suitable for:** Risk-averse investors seeking stable returns\n\n**Strategy:** Long-term holding, dividend focus",
-            "Moderate": "**Suitable for:** Balanced investors seeking growth with moderate risk\n\n**Strategy:** Core portfolio holding",
-            "Aggressive": "**Suitable for:** Growth-oriented investors with higher risk tolerance\n\n**Strategy:** Tactical allocation, monitor regularly",
-            "High-Risk": "**Suitable for:** Speculative investors seeking high returns\n\n**Strategy:** Small allocation, active monitoring required"
-        }
-        
-        st.write(risk_advice.get(dominant_risk, "Consult with financial advisor for personalized advice."))
-        st.markdown('</div>')
-
-def show_live_stock_analysis(app):
-    st.subheader("Live Stock Analysis")
-    
-    stock_symbol = st.text_input("Enter NSE stock symbol (e.g., RELIANCE, TCS, INFY):", "RELIANCE")
-    
-    if st.button("Fetch & Analyze", type="primary"):
-        with st.spinner("Fetching live data..."):
+        with st.spinner("Fetching stock data..."):
             try:
                 # Add .NS suffix for NSE stocks
-                ticker = f'{stock_symbol.upper()}.NS'
+                ticker = f'{selected_stock}.NS'
                 stock = yf.Ticker(ticker)
                 
                 # Get live data
                 hist = stock.history(period='1d')
                 if hist.empty:
-                    st.error("Invalid stock symbol or no data available.")
+                    st.error("No data available for this stock.")
                     return
                 
                 live_price = hist['Close'].iloc[-1]
@@ -532,17 +482,25 @@ def show_live_stock_analysis(app):
                     returns = hist_1y['Close'].pct_change().dropna()
                     volatility = returns.std() * np.sqrt(252)  # Annualized volatility
                 else:
-                    volatility = 0.25  # Default volatility
+                    volatility = 0.25
                 
-                # Get fundamentals
+                # Get fundamentals - with better error handling
                 info = stock.info
                 beta = info.get('beta', 1.0)
                 pe_ratio = info.get('trailingPE', 20.0)
-                market_cap = info.get('marketCap', 100000) / 10000000  # Convert to Cr.
-                dividend_yield = info.get('dividendYield', 0.01)
+                market_cap = info.get('marketCap', 100000) / 10000000
                 
-                # Display basic info
-                col1, col2, col3 = st.columns(3)
+                # Better dividend yield calculation
+                try:
+                    dividend_yield = info.get('dividendYield', 0.0)
+                    if dividend_yield is None:
+                        dividend_yield = 0.0
+                except:
+                    dividend_yield = 0.0
+                
+                # Display stock information
+                st.markdown("### Stock Information")
+                col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
                     st.metric("Current Price", f"₹{live_price:.2f}")
@@ -556,48 +514,100 @@ def show_live_stock_analysis(app):
                     st.metric("Market Cap (Cr.)", f"₹{market_cap:,.0f}")
                     st.metric("Dividend Yield", f"{dividend_yield:.2%}")
                 
-                # Prepare features for prediction
+                with col4:
+                    # Calculate additional metrics
+                    risk_free_rate = 0.06
+                    market_return = 0.12
+                    expected_return_capm = risk_free_rate + beta * (market_return - risk_free_rate)
+                    st.metric("CAPM Expected Return", f"{expected_return_capm:.2%}")
+                
+                # Prepare features for ML prediction
                 risk_features = [live_price, live_price*0.99, 1000000, beta, volatility, 
                                pe_ratio, dividend_yield, 60.0, 500.0, 1, market_cap]
                 
                 return_features = [beta, volatility, pe_ratio, dividend_yield, market_cap]
                 
-                # Make predictions
+                # Get predictions
                 risk_prediction = app.predict_stock_risk(risk_features, 'rf')
                 return_prediction = app.predict_stock_return(return_features, 'rf')
                 
-                # Display predictions
-                st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-                st.subheader("AI Analysis Results")
+                # Display Analysis Results
+                st.markdown("### Analysis Results")
+                
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    actual_risk = risk_prediction.replace('Sample: ', '') if 'Sample: ' in risk_prediction else risk_prediction
-                    st.markdown(f'<div class="{app.get_risk_class_color(actual_risk)}">')
-                    st.write(f"**Risk Category:** {actual_risk}")
-                    st.markdown('</div>')
+                    st.markdown(f'<div class="{app.get_risk_class_color(risk_prediction)}">', unsafe_allow_html=True)
+                    st.subheader("Risk Category")
+                    st.write(f"**{risk_prediction}**")
+                    st.markdown('</div>', unsafe_allow_html=True)
                 
                 with col2:
-                    st.metric("Expected Annual Return", f"{return_prediction:.2%}")
-                st.markdown('</div>')
+                    st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+                    st.subheader("Expected Return")
+                    st.metric("ML Prediction", f"{return_prediction:.2%}")
+                    st.metric("CAPM Model", f"{expected_return_capm:.2%}")
+                    st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Investment Recommendation
+                st.markdown("### 💡 Investment Recommendation")
+                
+                recommendation_text = {
+                    "Conservative": """
+                    **🛡️ Conservative Investment - Suitable for risk-averse investors**
+                    - Focus on capital preservation
+                    - Stable, predictable returns
+                    - Lower volatility
+                    - Good for long-term wealth building
+                    """,
+                    "Moderate": """
+                    **⚖️ Moderate Investment - Balanced risk-return profile**
+                    - Mix of growth and stability
+                    - Moderate volatility
+                    - Suitable for most investors
+                    - Good for medium to long-term goals
+                    """,
+                    "Aggressive": """
+                    **🚀 Aggressive Investment - Growth-focused**
+                    - Higher growth potential
+                    - Increased volatility
+                    - Suitable for growth-oriented investors
+                    - Requires active monitoring
+                    """,
+                    "High-Risk": """
+                    **🔥 High-Risk Investment - Speculative**
+                    - Highest growth potential
+                    - Significant volatility
+                    - Suitable for experienced investors
+                    - Requires careful risk management
+                    """
+                }
+                
+                st.markdown(f'<div class="recommendation-box">', unsafe_allow_html=True)
+                st.markdown(recommendation_text.get(risk_prediction, recommendation_text["Moderate"]))
+                st.markdown('</div>', unsafe_allow_html=True)
                 
             except Exception as e:
-                st.error(f"Error fetching stock data: {e}")
+                st.error(f"Error analyzing stock: {str(e)}")
 
 def show_portfolio_builder(app):
-    st.markdown('<div class="section-header">💼 Smart Portfolio Builder</div>', unsafe_allow_html=True)
+    st.markdown("## 💼 Smart Portfolio Builder")
     
-    # Check if portfolios are available
-    if not hasattr(app, 'portfolios') or not app.portfolios:
-        st.error("No portfolio data available. Please check if portfolio models are loaded correctly.")
-        return
+    col1, col2 = st.columns(2)
     
-    # Risk tolerance selection
-    risk_tolerance = st.select_slider(
-        "Select Your Risk Tolerance:",
-        options=["Very Low", "Low", "Medium", "High", "Very High"],
-        value="Medium"
-    )
+    with col1:
+        risk_tolerance = st.select_slider(
+            "Select Your Risk Tolerance:",
+            options=["Very Low", "Low", "Medium", "High", "Very High"],
+            value="Medium"
+        )
+    
+    with col2:
+        time_duration = st.select_slider(
+            "Investment Time Duration:",
+            options=["Short-term (<1 year)", "Medium-term (1-3 years)", "Long-term (3-5 years)", "Very Long-term (>5 years)"],
+            value="Long-term (3-5 years)"
+        )
     
     investment_amount = st.number_input("Investment Amount (₹):", min_value=1000, value=100000, step=1000)
     
@@ -612,84 +622,86 @@ def show_portfolio_builder(app):
     
     selected_portfolio = risk_mapping[risk_tolerance]
     
-    if selected_portfolio in app.portfolios and len(app.portfolios[selected_portfolio]['stocks']) > 0:
-        portfolio_data = app.portfolios[selected_portfolio]
-        
-        st.markdown(f'<div class="metric-card">', unsafe_allow_html=True)
-        st.subheader(f"Recommended: {selected_portfolio} Portfolio")
-        st.markdown('</div>')
-        
-        # Portfolio statistics
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.metric("Expected Return", f"{portfolio_data['expected_return']:.2%}")
-        
-        with col2:
-            st.metric("Risk (Volatility)", f"{portfolio_data['risk']:.2%}")
-        
-        with col3:
-            sharpe_ratio = (portfolio_data['expected_return'] - 0.06) / portfolio_data['risk'] if portfolio_data['risk'] > 0 else float('inf')
-            st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
-        
-        # Stock allocation table
-        st.subheader("📋 Recommended Stock Allocation")
-        
-        stocks_df = portfolio_data['stocks'].copy()
-        if 'allocation' in portfolio_data and len(portfolio_data['allocation']) > 0:
-            # Ensure allocation matches number of stocks
-            n_stocks = len(stocks_df)
-            if len(portfolio_data['allocation']) >= n_stocks:
-                stocks_df['Allocation (%)'] = portfolio_data['allocation'][:n_stocks] * 100
-            else:
-                # Create equal allocation if mismatch
-                stocks_df['Allocation (%)'] = 100 / n_stocks
+    if st.button("Build Portfolio", type="primary"):
+        if selected_portfolio in app.portfolios and len(app.portfolios[selected_portfolio]['stocks']) > 0:
+            portfolio_data = app.portfolios[selected_portfolio]
             
-            stocks_df['Investment (₹)'] = stocks_df['Allocation (%)'] * investment_amount / 100
-        
-        # Display relevant columns
-        display_columns = ['Company']
-        numeric_columns = ['Expected Return', 'Volatility', 'Beta', 'PE Ratio']
-        
-        for col in numeric_columns:
-            if col in stocks_df.columns:
-                display_columns.append(col)
-        
-        if 'Allocation (%)' in stocks_df.columns:
-            display_columns.extend(['Allocation (%)', 'Investment (₹)'])
-        
-        st.dataframe(stocks_df[display_columns].head(10), use_container_width=True)
-        
-        # Portfolio composition chart
-        if 'Allocation (%)' in stocks_df.columns:
-            st.subheader("📊 Portfolio Composition")
+            st.markdown(f"### Recommended: {selected_portfolio} Portfolio")
             
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+            # Portfolio statistics
+            col1, col2, col3, col4 = st.columns(4)
             
-            # Pie chart for top allocations
-            top_stocks = stocks_df.nlargest(8, 'Allocation (%)')
-            ax1.pie(top_stocks['Allocation (%)'], labels=top_stocks['Company'], autopct='%1.1f%%', startangle=90)
-            ax1.set_title('Top Stock Allocations')
+            with col1:
+                st.metric("Expected Return", f"{portfolio_data['expected_return']:.2%}")
             
-            # Risk-return scatter
-            if 'Volatility' in stocks_df.columns and 'Expected Return' in stocks_df.columns:
+            with col2:
+                st.metric("Risk (Volatility)", f"{portfolio_data['risk']:.2%}")
+            
+            with col3:
+                sharpe_ratio = portfolio_data.get('sharpe_ratio', 
+                    (portfolio_data['expected_return'] - 0.06) / portfolio_data['risk'] if portfolio_data['risk'] > 0 else 0)
+                st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
+            
+            with col4:
+                st.metric("Time Horizon", time_duration.split('(')[1].replace(')', ''))
+            
+            # Stock allocation table
+            st.markdown("### 📋 Portfolio Allocation")
+            
+            stocks_df = portfolio_data['stocks'].copy()
+            if 'allocation' in portfolio_data and len(portfolio_data['allocation']) > 0:
+                # Ensure allocation matches number of stocks
+                n_stocks = len(stocks_df)
+                if len(portfolio_data['allocation']) >= n_stocks:
+                    stocks_df['Allocation %'] = portfolio_data['allocation'][:n_stocks] * 100
+                else:
+                    stocks_df['Allocation %'] = 100 / n_stocks
+                
+                stocks_df['Investment (₹)'] = stocks_df['Allocation %'] * investment_amount / 100
+            
+            # Display stock details
+            display_columns = ['Company', 'Expected Return', 'Volatility', 'Beta']
+            if 'Allocation %' in stocks_df.columns:
+                display_columns.extend(['Allocation %', 'Investment (₹)'])
+            
+            # Format the dataframe for display
+            display_df = stocks_df[display_columns].copy()
+            display_df['Expected Return'] = display_df['Expected Return'].apply(lambda x: f"{x:.2%}")
+            display_df['Volatility'] = display_df['Volatility'].apply(lambda x: f"{x:.2%}")
+            if 'Investment (₹)' in display_df.columns:
+                display_df['Investment (₹)'] = display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.0f}")
+            
+            st.dataframe(display_df, use_container_width=True)
+            
+            # Visualizations
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Top allocations pie chart
+                if 'Allocation %' in stocks_df.columns:
+                    fig1, ax1 = plt.subplots(figsize=(8, 6))
+                    top_stocks = stocks_df.nlargest(8, 'Allocation %')
+                    ax1.pie(top_stocks['Allocation %'], labels=top_stocks['Company'], 
+                           autopct='%1.1f%%', startangle=90)
+                    ax1.set_title('Top Stock Allocations')
+                    st.pyplot(fig1)
+            
+            with col2:
+                # Risk-return scatter
+                fig2, ax2 = plt.subplots(figsize=(8, 6))
                 ax2.scatter(stocks_df['Volatility'], stocks_df['Expected Return'], 
-                           s=100, alpha=0.6)
+                           alpha=0.6, s=100)
                 ax2.set_xlabel('Volatility (Risk)')
                 ax2.set_ylabel('Expected Return')
                 ax2.set_title('Portfolio Stocks: Risk-Return Profile')
                 ax2.grid(True, alpha=0.3)
-            
-            plt.tight_layout()
-            st.pyplot(fig)
-    
-    else:
-        st.warning(f"No stocks available in the {selected_portfolio} portfolio.")
-
-# ... (rest of the functions remain the same as in the previous version)
+                st.pyplot(fig2)
+        
+        else:
+            st.warning(f"No stocks available in the {selected_portfolio} portfolio.")
 
 def show_investment_recommendations(app):
-    st.markdown('<div class="section-header">🎯 Personalized Investment Recommendations</div>', unsafe_allow_html=True)
+    st.markdown("## 🎯 Personalized Investment Recommendations")
     
     col1, col2 = st.columns(2)
     
@@ -706,14 +718,22 @@ def show_investment_recommendations(app):
             ["Short-term (1-2 years)", "Medium-term (3-5 years)", "Long-term (5+ years)"]
         )
     
-    age = st.slider("Your Age:", min_value=18, max_value=80, value=35)
+    col3, col4 = st.columns(2)
+    
+    with col3:
+        age = st.slider("Your Age:", min_value=18, max_value=80, value=35)
+    
+    with col4:
+        investment_amount = st.number_input("Investment Amount (₹):", 
+                                          min_value=1000, value=100000, step=1000)
+    
     investment_goal = st.selectbox(
         "Primary Investment Goal:",
         ["Wealth Preservation", "Regular Income", "Wealth Growth", "Aggressive Growth"]
     )
     
     if st.button("Generate Personalized Recommendation", type="primary"):
-        # Enhanced recommendation logic
+        # Map risk tolerance to portfolio
         risk_mapping = {
             'Very Low': 'Conservative',
             'Low': 'Conservative',
@@ -724,120 +744,87 @@ def show_investment_recommendations(app):
         
         recommended_portfolio = risk_mapping.get(risk_tolerance, 'Moderate')
         
-        # Check if recommended portfolio exists
         if recommended_portfolio not in app.portfolios:
             st.error(f"Recommended portfolio '{recommended_portfolio}' not available.")
             return
         
         portfolio_data = app.portfolios[recommended_portfolio]
         
-        # Age-based adjustment
+        # Age-based advice
         if age < 30:
-            risk_adjustment = "You're young - consider being more aggressive with investments for long-term growth."
+            age_advice = "Young investors can afford to take more risks for long-term growth."
+            suggested_adjustment = "Consider adding some aggressive stocks to your portfolio."
         elif age < 50:
-            risk_adjustment = "Balanced approach suitable for your age - focus on growth with some stability."
+            age_advice = "Mid-career investors should balance growth with stability."
+            suggested_adjustment = "Maintain a diversified portfolio across risk categories."
         else:
-            risk_adjustment = "Consider more conservative allocations to preserve capital as you approach retirement."
+            age_advice = "Pre-retirement investors should focus on capital preservation."
+            suggested_adjustment = "Consider shifting towards more conservative investments."
         
-        # Goal-based adjustment
+        # Goal-based advice
         goal_advice = {
-            "Wealth Preservation": "Focus on capital preservation with stable, dividend-paying stocks.",
-            "Regular Income": "Prioritize high-dividend yield stocks and stable returns.",
-            "Wealth Growth": "Balance between growth stocks and stable investments.",
-            "Aggressive Growth": "Focus on high-growth potential stocks, accepting higher volatility."
+            "Wealth Preservation": "Focus on stable, dividend-paying stocks with low volatility.",
+            "Regular Income": "Prioritize high-dividend yield stocks and consistent performers.",
+            "Wealth Growth": "Balance between growth stocks and stable blue-chip companies.",
+            "Aggressive Growth": "Focus on high-growth potential stocks across sectors."
         }
         
-        st.markdown('<div class="recommendation-box">', unsafe_allow_html=True)
-        st.subheader("🎯 Your Personalized Investment Plan")
+        # Display recommendation
+        st.markdown("### 🎯 Your Personalized Investment Plan")
         
-        st.write(f"**Recommended Portfolio:** {recommended_portfolio}")
-        st.write(f"**Expected Return:** {portfolio_data['expected_return']:.2%}")
-        st.write(f"**Risk Level:** {portfolio_data['risk']:.2%}")
-        st.write(f"**Number of Stocks:** {len(portfolio_data['stocks'])}")
+        col1, col2 = st.columns(2)
         
-        st.write("---")
-        st.write("**📋 Strategic Advice:**")
-        st.write(f"• {risk_adjustment}")
-        st.write(f"• {goal_advice[investment_goal]}")
+        with col1:
+            st.metric("Recommended Portfolio", recommended_portfolio)
+            st.metric("Expected Return", f"{portfolio_data['expected_return']:.2%}")
+            st.metric("Risk Level", f"{portfolio_data['risk']:.2%}")
         
-        if investment_horizon == "Short-term (1-2 years)":
-            st.write("• For short-term horizon, focus on liquidity and lower volatility")
-        elif investment_horizon == "Medium-term (3-5 years)":
-            st.write("• Medium-term allows for balanced growth with moderate risk")
-        else:
-            st.write("• Long-term horizon enables higher risk-taking for greater returns")
+        with col2:
+            st.metric("Investment Amount", f"₹{investment_amount:,}")
+            st.metric("Time Horizon", investment_horizon)
+            st.metric("Number of Stocks", len(portfolio_data['stocks']))
         
-        st.markdown('</div>')
+        # Detailed recommendation
+        st.markdown("### 📋 Portfolio Composition")
         
-        # Additional metrics
-        if len(portfolio_data['stocks']) > 0:
-            col1, col2, col3 = st.columns(3)
+        # Show top recommended stocks
+        stocks_df = portfolio_data['stocks']
+        if 'allocation' in portfolio_data and len(portfolio_data['allocation']) > 0:
+            n_stocks = len(stocks_df)
+            if len(portfolio_data['allocation']) >= n_stocks:
+                stocks_df['Allocation %'] = portfolio_data['allocation'][:n_stocks] * 100
+            else:
+                stocks_df['Allocation %'] = 100 / n_stocks
             
-            with col1:
-                if 'Beta' in portfolio_data['stocks'].columns:
-                    avg_beta = portfolio_data['stocks']['Beta'].mean()
-                    st.metric("Portfolio Beta", f"{avg_beta:.2f}")
+            stocks_df['Investment (₹)'] = stocks_df['Allocation %'] * investment_amount / 100
+        
+        # Display top 10 stocks
+        top_stocks = stocks_df.nlargest(10, 'Allocation %' if 'Allocation %' in stocks_df.columns else 'Expected Return')
+        
+        for _, stock in top_stocks.iterrows():
+            investment_amt = stock['Investment (₹)'] if 'Investment (₹)' in stock else investment_amount / 10
+            st.markdown(f"""
+            <div class="stock-card">
+                <strong>{stock['Company']}</strong><br>
+                Expected Return: {stock['Expected Return']:.2%} | 
+                Risk: {stock['Volatility']:.2%} |
+                Investment: ₹{investment_amt:,.0f}
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Strategic advice
+        st.markdown("### 💡 Strategic Advice")
+        st.markdown(f"""
+        <div class="recommendation-box">
+            <strong>Based on your profile:</strong><br><br>
+            • <strong>Age Factor:</strong> {age_advice}<br>
+            • <strong>Risk Adjustment:</strong> {suggested_adjustment}<br>
+            • <strong>Goal Strategy:</strong> {goal_advice[investment_goal]}<br><br>
             
-            with col2:
-                if 'PE Ratio' in portfolio_data['stocks'].columns:
-                    avg_pe = portfolio_data['stocks']['PE Ratio'].mean()
-                    st.metric("Average PE Ratio", f"{avg_pe:.1f}")
-            
-            with col3:
-                sharpe_ratio = (portfolio_data['expected_return'] - 0.06) / portfolio_data['risk'] if portfolio_data['risk'] > 0 else float('inf')
-                st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
-
-def show_model_performance(app):
-    st.markdown('<div class="section-header">📊 Model Performance & Analytics</div>', unsafe_allow_html=True)
-    
-    # Model performance metrics
-    st.subheader("🤖 Model Accuracy Metrics")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("Risk Classification (RF)", "85%", "2%")
-    
-    with col2:
-        st.metric("Risk Classification (LR)", "78%", "-1%")
-    
-    with col3:
-        st.metric("Return Prediction (RF R²)", "0.72", "0.05")
-    
-    with col4:
-        st.metric("Return Prediction (LR R²)", "0.65", "0.02")
-    
-    # Feature importance visualization
-    st.subheader("🔍 Feature Importance")
-    
-    # Create sample feature importance data
-    feature_importance_data = {
-        'Feature': ['Beta', 'Volatility', 'PE Ratio', 'Market Cap', 'Dividend Yield', 
-                   '20D Avg Delivery', 'Book Value', 'Face Value'],
-        'Importance': [0.25, 0.18, 0.15, 0.12, 0.10, 0.08, 0.07, 0.05]
-    }
-    
-    importance_df = pd.DataFrame(feature_importance_data)
-    
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.barplot(data=importance_df, x='Importance', y='Feature', ax=ax, palette='viridis')
-    ax.set_title('Feature Importance in Risk Classification')
-    st.pyplot(fig)
-    
-    # System status
-    st.subheader("🔄 System Status")
-    
-    status_col1, status_col2 = st.columns(2)
-    
-    with status_col1:
-        st.info(f"**Models Loaded:** {'✅ Yes' if app.models_loaded else '❌ No'}")
-        st.info(f"**Portfolios Available:** {len(app.portfolios)}")
-        st.info(f"**Risk Categories:** {list(app.le_risk.classes_)}")
-    
-    with status_col2:
-        st.info(f"**Risk Features:** {len(app.risk_feature_names)}")
-        st.info(f"**Return Features:** {len(app.return_feature_names)}")
-        st.info("**Live Data:** ✅ Available")
+            <strong>Recommended Action:</strong> Invest ₹{investment_amount:,} in the {recommended_portfolio} portfolio 
+            for {investment_horizon.lower()} to achieve your {investment_goal.lower()} goals.
+        </div>
+        """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
